@@ -1,6 +1,11 @@
 import streamlit as st
 from openai import OpenAI
 
+import streamlit as st
+from openai import OpenAI
+import anthropic
+from anthropic import Anthropic
+
 # Show title and description.
 st.title("📄 Document question answering")
 st.write(
@@ -49,5 +54,44 @@ else:
             stream=True,
         )
 
-        # Stream the response to the app using `st.write_stream`.
-        st.write_stream(stream)
+        # 클로드 API를 사용하여 사업계획서 생성
+        with st.spinner('사업계획서를 생성하고 있습니다...'):
+            # 회사 정보 입력 받기
+            st.subheader("회사 정보 입력")
+            company_name = st.text_input("회사명")
+            company_address = st.text_input("회사 주소") 
+            company_type = st.selectbox("회사 형태", ["주식회사", "유한회사", "개인사업자", "기타"])
+            employee_count = st.number_input("직원 수", min_value=1)
+            annual_revenue = st.number_input("연매출액(백만원)", min_value=0)
+            
+            # 사업계획서 생성 시작
+            if st.button("사업계획서 생성"):
+                messages = [
+                    {"role": "system", "content": "정부지원사업 사업계획서 작성 전문가입니다."},
+                    {"role": "user", "content": f"""
+                    공고 내용: {document}
+                    
+                    회사 정보:
+                    - 회사명: {company_name}
+                    - 주소: {company_address}
+                    - 회사형태: {company_type} 
+                    - 직원수: {employee_count}명
+                    - 연매출: {annual_revenue}백만원
+                    
+                    위 정보를 바탕으로 30페이지 분량의 상세한 사업계획서를 작성해주세요.
+                    """}
+                ]
+                
+                response_text = ""
+                for chunk in stream:
+                    if chunk.choices[0].delta.content is not None:
+                        response_text += chunk.choices[0].delta.content
+                        st.markdown(response_text)
+                
+                # 사업계획서 다운로드 버튼 추가
+                st.download_button(
+                    label="사업계획서 다운로드",
+                    data=response_text,
+                    file_name="사업계획서.md",
+                    mime="text/markdown"
+                )
